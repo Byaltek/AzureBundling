@@ -1,0 +1,8 @@
+﻿{
+    "AzureAccountName": "",
+    "AzureAccessKey": "",
+    "CdnPath": "",
+    "SecureCdnPath": "",
+    "CachePollTime": "",
+    "BundleCacheTTL": ""
+}
