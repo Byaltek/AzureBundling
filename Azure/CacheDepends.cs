@@ -12,6 +12,8 @@ namespace Byaltek.Azure
         private Timer cacheTimer;
         private List<CacheHelper> cacheHelper = new List<CacheHelper>();
         private Storage blobStore = new Storage();
+        private Object timerLock = new Object();
+        private int pollTime = 60;
 
         /// <summary> 
         ///   Adds a Cache Dependency to the files associated with the specified virtual path.
@@ -20,8 +22,9 @@ namespace Byaltek.Azure
         /// <param name="virtualPathDependencies">A list of virtual files.</param>
         /// <param name="utcStart">The start time to compare files too.</param>
         /// <param name="container">The blob container.</param>
-        public CacheDepends(string virtualPath, IEnumerable virtualPathDependencies, DateTime utcStart, string container)
-            :base()
+        /// <param name="pollTime">The poll time for the timer.</param>
+        public CacheDepends(string virtualPath, IEnumerable virtualPathDependencies, DateTime utcStart, string container, int? PollTime = null)
+            : base()
         {
             foreach (string virtualDependency in virtualPathDependencies)
             {
@@ -32,7 +35,9 @@ namespace Byaltek.Azure
                 cacheHelper.Add(ch);
             }
             SetUtcLastModified(utcStart);
-            cacheTimer = new Timer(new TimerCallback(CheckDependencyCallback), this, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(Config.CachePollTime));
+            if (Config.CachePollTime > 0)
+                pollTime = Config.CachePollTime;
+            cacheTimer = new Timer(new TimerCallback(CheckDependencyCallback), this, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(pollTime));
         }
 
         /// <summary> 
@@ -42,7 +47,7 @@ namespace Byaltek.Azure
         protected void CheckDependencyCallback(object sender)
         {
             CacheDepends cacheDep = (CacheDepends)sender;
-            lock (cacheDep.cacheTimer)
+            lock (timerLock)
             {
                 foreach (CacheHelper ch in cacheDep.cacheHelper)
                 {
@@ -57,7 +62,9 @@ namespace Byaltek.Azure
             }
         }
 
-
+        /// <summary> 
+        ///  Calls base.DependencyDispose() to dispose of the cache dependency. 
+        /// </summary> 
         protected override void DependencyDispose()
         {
             if (this.cacheTimer != null)
@@ -75,10 +82,7 @@ namespace Byaltek.Azure
         public string filePath { get; set; }
         public string container { get; set; }
 
-        public CacheHelper()
-        {
-
-        }
-}
+        public CacheHelper() { }
+    }
 
 }

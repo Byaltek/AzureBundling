@@ -17,6 +17,12 @@ namespace Byaltek.Azure
             this.AzureAccessKey = Config.AzureAccessKey;
         }
 
+        public Storage(string azureAccountName, string azureAccessKey)
+        {
+            this.AzureAccountName = azureAccountName;
+            this.AzureAccessKey = azureAccessKey;
+        }
+
         /// <summary>
         /// The Azure Account name to be used for the connection to Azure
         /// </summary>
@@ -54,9 +60,11 @@ namespace Byaltek.Azure
                     return blockBlob.Properties.LastModified.Value;
                 return DateTime.UtcNow;
             }
-            catch (Exception ex)
+            catch (StorageException ex)
             {
-                throw ex;
+                var requestInformation = ex.RequestInformation;
+                Trace.WriteLine(requestInformation.HttpStatusMessage);
+                return DateTime.UtcNow;
             }
         }
 
@@ -78,8 +86,10 @@ namespace Byaltek.Azure
                     return true;
                 return false;
             }
-            catch
+            catch (StorageException ex)
             {
+                var requestInformation = ex.RequestInformation;
+                Trace.WriteLine(requestInformation.HttpStatusMessage);
                 return false;
             }
         }
@@ -119,9 +129,11 @@ namespace Byaltek.Azure
                 if (doCompression.HasValue && doCompression == true)
                     CompressBlob(container, remoteFileName, DownloadStringBlob(container, remoteFileName), contentType, cacheControlTTL);
             }
-            catch (Exception ex)
+            catch (StorageException ex)
             {
-                throw ex;
+                var requestInformation = ex.RequestInformation;
+                Trace.WriteLine(requestInformation.HttpStatusMessage);
+                throw;
             }
 
         }
@@ -149,9 +161,11 @@ namespace Byaltek.Azure
                 if (doCompression.HasValue && doCompression == true)
                     CompressBlob(container, remoteFileName, DownloadStringBlob(container, remoteFileName), contentType, cacheControlTTL);
             }
-            catch (Exception ex)
+            catch (StorageException ex)
             {
-                throw ex;
+                var requestInformation = ex.RequestInformation;
+                Trace.WriteLine(requestInformation.HttpStatusMessage);
+                throw;
             }
 
         }
@@ -181,9 +195,11 @@ namespace Byaltek.Azure
                 if (doCompression.HasValue && doCompression == true)
                     CompressBlob(container, remoteFileName, fileContents, contentType, cacheControlTTL);
             }
-            catch (Exception ex)
+            catch (StorageException ex)
             {
-                throw ex;
+                var requestInformation = ex.RequestInformation;
+                Trace.WriteLine(requestInformation.HttpStatusMessage);
+                throw;
             }
 
         }
@@ -212,22 +228,29 @@ namespace Byaltek.Azure
             var bytes = Encoding.UTF8.GetBytes(fileContents);
             if (bytes.Length > 350)
             {
+                MemoryStream mso = null;
                 using (var msi = new MemoryStream(bytes))
-                using (var mso = new MemoryStream())
-                {
-                    using (var gs = new GZipStream(mso, CompressionMode.Compress, true))
+                    try
                     {
-                        msi.CopyTo(gs);
+                        mso = new MemoryStream();
+                        using (var gs = new GZipStream(mso, CompressionMode.Compress, true))
+                        {
+                            msi.CopyTo(gs);
+                        }
+                        var compressed = new byte[mso.Length];
+                        compressed = mso.ToArray();
+                        //maximum level for gzip is about 95% so make sure file is at least 5%
+                        if (compressed.Length > (bytes.Length * .05))
+                        {
+                            gzipBlob.UploadFromByteArray(compressed, 0, compressed.Length);
+                            gzipBlob.Properties.ContentEncoding = "gzip";
+                        }
                     }
-                    var compressed = new byte[mso.Length];
-                    compressed = mso.ToArray();
-                    //maximum level for gzip is about 95% so make sure file is at least 5%
-                    if (compressed.Length > (bytes.Length * .05))
+                    finally
                     {
-                        gzipBlob.UploadFromByteArray(compressed, 0, compressed.Length);
-                        gzipBlob.Properties.ContentEncoding = "gzip";
+                        if (mso != null)
+                            mso.Dispose();
                     }
-                }
             }
             else
             {
@@ -241,24 +264,29 @@ namespace Byaltek.Azure
 
         public MemoryStream DownloadBlob(string container, string fileName)
         {
-            // Create the blob client.
             CloudBlobClient blobClient = StorageAccount.CreateCloudBlobClient();
             CloudBlobContainer blobContainer = blobClient.GetContainerReference(container);
-            // Retrieve reference to a blob named "photo1.jpg".
             CloudBlockBlob blockBlob = blobContainer.GetBlockBlobReference(fileName);
             MemoryStream strm = new MemoryStream();
             blockBlob.DownloadToStream(strm);
             return strm;
         }
-        
+
         public string DownloadStringBlob(string container, string fileName)
         {
-            // Create the blob client.
-            CloudBlobClient blobClient = StorageAccount.CreateCloudBlobClient();
-            CloudBlobContainer blobContainer = blobClient.GetContainerReference(container);
-            // Retrieve reference to a blob named "photo1.jpg".
-            CloudBlockBlob blockBlob = blobContainer.GetBlockBlobReference(fileName);
-            return blockBlob.DownloadText();
+            try
+            {
+                CloudBlobClient blobClient = StorageAccount.CreateCloudBlobClient();
+                CloudBlobContainer blobContainer = blobClient.GetContainerReference(container);
+                CloudBlockBlob blockBlob = blobContainer.GetBlockBlobReference(fileName);
+                return blockBlob.DownloadText();
+            }
+            catch (StorageException ex)
+            {
+                var requestInformation = ex.RequestInformation;
+                Trace.WriteLine(requestInformation.HttpStatusMessage);
+                return null;
+            }
         }
 
         /// <summary>
@@ -275,10 +303,11 @@ namespace Byaltek.Azure
                 CloudBlockBlob blockBlob = blobContainer.GetBlockBlobReference(fileName);
                 blockBlob.Delete();
             }
-            catch (Exception ex)
+            catch (StorageException ex)
             {
-                if (!ex.Message.Contains("404")) { throw ex; }
-
+                var requestInformation = ex.RequestInformation;
+                Trace.WriteLine(requestInformation.HttpStatusMessage);
+                throw;
             }
         }
 
@@ -314,20 +343,6 @@ namespace Byaltek.Azure
         /// <param name="container"></param>
         /// <param name="dir"></param>
         /// <returns></returns>
-        public IEnumerable<IListBlobItem> GetBlobFileList(string container, string dir)
-        {
-            CloudBlobClient blobClient = StorageAccount.CreateCloudBlobClient();
-            CloudBlobContainer blobContainer = blobClient.GetContainerReference(container);
-            CloudBlobDirectory blobDir = blobContainer.GetDirectoryReference(dir);
-            return blobDir.ListBlobs(true, BlobListingDetails.None);
-        }
-
-        /// <summary>
-        /// Returns a list of all blobs in a subdirectory in a container
-        /// </summary>
-        /// <param name="container"></param>
-        /// <param name="dir"></param>
-        /// <returns></returns>
         public bool BlobDirectoryExists(string container, string dir)
         {
             try
@@ -335,10 +350,12 @@ namespace Byaltek.Azure
                 CloudBlobClient blobClient = StorageAccount.CreateCloudBlobClient();
                 CloudBlobContainer blobContainer = blobClient.GetContainerReference(container);
                 CloudBlobDirectory blobDir = blobContainer.GetDirectoryReference(dir);
-                    return true;
+                return true;
             }
-            catch (Exception ex)
+            catch (StorageException ex)
             {
+                var requestInformation = ex.RequestInformation;
+                Trace.WriteLine(requestInformation.HttpStatusMessage);
                 return false;
             }
         }
@@ -351,12 +368,21 @@ namespace Byaltek.Azure
         /// <returns></returns>
         public void DeleteBlobDirectory(string container, string dir)
         {
-            CloudBlobClient blobClient = StorageAccount.CreateCloudBlobClient();
-            CloudBlobContainer blobContainer = blobClient.GetContainerReference(container);
-            CloudBlobDirectory blobDir = blobContainer.GetDirectoryReference(dir);
-            foreach(IListBlobItem blob in blobDir.ListBlobs(true, BlobListingDetails.None))
+            try
             {
-                DeleteBlob(container, dir + "/" + Path.GetFileName(blob.Uri.LocalPath));
+                CloudBlobClient blobClient = StorageAccount.CreateCloudBlobClient();
+                CloudBlobContainer blobContainer = blobClient.GetContainerReference(container);
+                CloudBlobDirectory blobDir = blobContainer.GetDirectoryReference(dir);
+                foreach (IListBlobItem blob in blobDir.ListBlobs(true, BlobListingDetails.None))
+                {
+                    DeleteBlob(container, dir + "/" + Path.GetFileName(blob.Uri.LocalPath));
+                }
+            }
+            catch (StorageException ex)
+            {
+                var requestInformation = ex.RequestInformation;
+                Trace.WriteLine(requestInformation.HttpStatusMessage);
+                throw;
             }
         }
 
@@ -369,12 +395,12 @@ namespace Byaltek.Azure
                 try
                 {
                     return CloudStorageAccount.Parse(ConnectionString);
-
                 }
-                catch (Exception ex)
+                catch (StorageException ex)
                 {
-
-                    throw ex;
+                    var requestInformation = ex.RequestInformation;
+                    Trace.WriteLine(requestInformation.HttpStatusMessage);
+                    throw;
                 }
             }
         }

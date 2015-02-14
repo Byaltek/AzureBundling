@@ -11,14 +11,24 @@ namespace Byaltek.Azure
 
     public class StorageVirtualPath : VirtualPathProvider
     {
-        private Storage blobStore = new Storage();
+        private Storage blobStore;
+        private string container;
+        int pollTime = 60;
 
-        private string Container;
-
-        public StorageVirtualPath(string container)
+        public StorageVirtualPath(string Container, string azureAccountName = null, string azureAccessKey = null, int? PollTime = null)
             : base()
         {
-            Container = container;
+            container = Container;
+            if(!string.IsNullOrEmpty(azureAccountName) && !string.IsNullOrEmpty(azureAccessKey))
+            {
+                blobStore = new Storage(azureAccountName, azureAccessKey);               
+            }
+            else
+            {
+                blobStore = new Storage();
+            }
+            if (PollTime.HasValue)
+                pollTime = PollTime.Value;
         }
 
         /// <summary> 
@@ -41,7 +51,7 @@ namespace Byaltek.Azure
             if (IsPathVirtual(virtualPath))
             {
                 string azurePath = virtualPath.TrimStart('~', '/');
-                if (blobStore.BlobExists(Container, azurePath))
+                if (blobStore.BlobExists(container, azurePath))
                     return true;
                 return Previous != null ? Previous.FileExists(virtualPath) : false;
             }
@@ -59,11 +69,11 @@ namespace Byaltek.Azure
                 string azurePath = virtualPath.TrimStart('~', '/');
                 try
                 {
-                    MemoryStream stream = blobStore.DownloadBlob(Container, azurePath);
-                    stream.Seek(0, SeekOrigin.Begin);
+                    MemoryStream stream = blobStore.DownloadBlob(container, azurePath);
+                    stream.Position = 0;
                     return new StorageVirtualFile(virtualPath, stream);
                 }
-                catch (Exception)
+                catch
                 {
                     return Previous != null ? Previous.GetFile(virtualPath) : null;
                 }
@@ -86,7 +96,7 @@ namespace Byaltek.Azure
         {
             if (IsPathVirtual(virtualPath))
             {
-                CacheDepends azureCacheDep = new CacheDepends(virtualPath, virtualPathDependencies, utcStart, Container);
+                CacheDepends azureCacheDep = new CacheDepends(virtualPath, virtualPathDependencies, utcStart, container, pollTime);
                 return azureCacheDep;
             }
             return Previous.GetCacheDependency(virtualPath, virtualPathDependencies, utcStart);

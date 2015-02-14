@@ -74,8 +74,8 @@ namespace Byaltek.Azure
     /// <param name="container">The blob container.</param>
     public class JSBundle : GZipBundle
     {
-        public JSBundle(string virtualPath, string container)
-            : base(virtualPath, new IBundleTransform[] { new JsMinify(), new AzureTranform(container) })
+        public JSBundle(string virtualPath, string container, string azureAccountName = null, string azureAccessKey = null, string CdnPath = null, string SecureCdnPath = null, int? BundleCacheTTL = null)
+            : base(virtualPath, new IBundleTransform[] { new JsMinify(), new AzureTranform(container, azureAccountName, azureAccessKey, CdnPath, SecureCdnPath, BundleCacheTTL) })
         {
         }
     }
@@ -87,26 +87,42 @@ namespace Byaltek.Azure
     /// <param name="container">The blob container.</param>
     public class CSSBundle : GZipBundle
     {
-        public CSSBundle(string virtualPath, string container)
-            : base(virtualPath, new IBundleTransform[] { new CssMinify(), new AzureTranform(container) })
+        public CSSBundle(string virtualPath, string container, string azureAccountName = null, string azureAccessKey = null, string CdnPath = null, string SecureCdnPath = null, int? BundleCacheTTL = null)
+            : base(virtualPath, new IBundleTransform[] { new CssMinify(), new AzureTranform(container, azureAccountName, azureAccessKey, CdnPath, SecureCdnPath, BundleCacheTTL) })
         {
         }
     }
 
     public class AzureTranform : IBundleTransform
     {
-        private Storage blobStore = new Storage();
+        private Storage blobStore;
         private string container;
-        
-        public AzureTranform(string Container)
+        private string cdnPath;
+        private string secureCdnPath;
+        private int bundleCacheTTL = 60;
+
+        public AzureTranform(string Container, string azureAccountName = null, string azureAccessKey = null, string CdnPath = null, string SecureCdnPath = null, int? BundleCacheTTL = null)
         {
             container = Container;
+            if (!string.IsNullOrEmpty(azureAccountName) && !string.IsNullOrEmpty(azureAccessKey))
+            {
+                blobStore = new Storage(azureAccountName, azureAccessKey);
+            }
+            else
+            {
+                blobStore = new Storage();
+            }
+            cdnPath = CdnPath;
+            secureCdnPath = SecureCdnPath;
+            if (BundleCacheTTL.HasValue)
+                bundleCacheTTL = BundleCacheTTL.Value;
         }
 
         public void Process(BundleContext context, BundleResponse response)
         {
-            var bundleCacheTTL = Config.BundleCacheTTL;
-            var CdnPath = context.HttpContext.Request.IsSecureConnection ? Config.SecureCdnPath : Config.CdnPath;
+            if (Config.BundleCacheTTL > 0)
+                bundleCacheTTL = Config.BundleCacheTTL;
+            var CdnPath = context.HttpContext.Request.IsSecureConnection ? !string.IsNullOrEmpty(secureCdnPath) ? secureCdnPath : Config.SecureCdnPath : !string.IsNullOrEmpty(cdnPath) ? cdnPath : Config.CdnPath;
             var blob = string.Empty;
             var content = response.Content;
             var contentType = response.ContentType == "text/css" ? "text/css" : "application/javascript";
@@ -133,7 +149,7 @@ namespace Byaltek.Azure
                 {
                     blobStore.CompressBlob(container, azureCompressedPath, response.Content, contentType, bundleCacheTTL);
                 }
-            }            
+            }
             var uri = string.Format("{0}{1}/{2}", CdnPath, container, azurePath);
             if (context.BundleCollection.UseCdn)
                 using (var hashAlgorithm = new SHA256Managed())
@@ -157,17 +173,24 @@ namespace Byaltek.Azure
             content = string.Empty;
             if (bytes.Length > 350)
             {
+                MemoryStream mso = null;
                 using (var msi = new MemoryStream(bytes))
-                using (var mso = new MemoryStream())
-                {
-                    using (var gs = new GZipStream(mso, CompressionMode.Compress, true))
+                    try
                     {
-                        msi.CopyTo(gs);
+                        mso = new MemoryStream();
+                        using (var gs = new GZipStream(mso, CompressionMode.Compress, true))
+                        {
+                            msi.CopyTo(gs);
+                        }
+                        mso.Position = 0;
+                        StreamReader sr = new StreamReader(mso);
+                        content = sr.ReadToEnd();
                     }
-                    mso.Position = 0;
-                    StreamReader sr = new StreamReader(mso);
-                    content = sr.ReadToEnd();
-                }
+                    finally
+                    {
+                        if (mso != null)
+                            mso.Dispose();
+                    }
             }
             return content;
         }
