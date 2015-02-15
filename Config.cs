@@ -143,19 +143,35 @@ namespace Byaltek
                     }
                     if (WebConfigurationManager.AppSettings["CachePollTime"] != null)
                     {
-                        cachePollTime = Convert.ToInt32(WebConfigurationManager.AppSettings["CachePollTime"]);
+                        int oldCachePollTime = cachePollTime;
+                        if (!Int32.TryParse(WebConfigurationManager.AppSettings["CachePollTime"], out cachePollTime))
+                        {
+                            cachePollTime = oldCachePollTime;
+                        }
                     }
                     else
                     {
-                        cachePollTime = Convert.ToInt32(GetJson(jsonString, "CachePollTime"));
+                        int oldCachePollTime = cachePollTime;
+                        if (!Int32.TryParse(GetJson(jsonString, "CachePollTime"), out cachePollTime))
+                        {
+                            cachePollTime = oldCachePollTime;
+                        }
                     }
                     if (WebConfigurationManager.AppSettings["BundleCacheTTL"] != null)
                     {
-                        bundleCacheTTL = Convert.ToInt32(WebConfigurationManager.AppSettings["BundleCacheTTL"]);
+                        int oldBundleCacheTTL = bundleCacheTTL;
+                        if (!Int32.TryParse(WebConfigurationManager.AppSettings["BundleCacheTTL"], out bundleCacheTTL))
+                        {
+                            bundleCacheTTL = oldBundleCacheTTL;
+                        }
                     }
                     else
                     {
-                        bundleCacheTTL = Convert.ToInt32(GetJson(jsonString, "BundleCacheTTL"));
+                        int oldBundleCacheTTL = bundleCacheTTL;
+                        if (!Int32.TryParse(GetJson(jsonString, "BundleCacheTTL"), out bundleCacheTTL))
+                        {
+                            bundleCacheTTL = oldBundleCacheTTL;
+                        }
                     }
                 }
             }
