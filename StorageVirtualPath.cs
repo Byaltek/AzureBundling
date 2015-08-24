@@ -84,7 +84,17 @@ namespace Byaltek.Azure
 
         public override bool DirectoryExists(string virtualDir)
         {
-            return base.DirectoryExists(virtualDir);
+            if (IsPathVirtual(virtualDir))
+            {
+                string azurePath = virtualDir.TrimStart('~', '/');
+                if (blobStore.BlobDirectoryExists(container, azurePath))
+                    return true;
+                return Previous != null ? Previous.DirectoryExists(virtualDir) : false;
+            }
+            else
+            {
+                return Previous != null ? Previous.DirectoryExists(virtualDir) : false;
+            }
         }
 
         public override VirtualDirectory GetDirectory(string virtualDir)
