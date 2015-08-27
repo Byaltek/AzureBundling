@@ -1,4 +1,4 @@
-﻿using System.Web;
+using System.Web;
 using System.Web.Optimization;
 using System.Text;
 using System.Security.Cryptography;
@@ -24,6 +24,24 @@ namespace Byaltek.Azure
             _config = new GZipBundleConfig(virtualPath, container, cdnPath, secureCdnPath, useCompression.Value);
         }
 
+        /// <summary>
+        /// Processes the bundle request to generate the response.
+        /// </summary>
+        /// <param name="context">The <see cref="BundleContext"/> object that contains state for both the framework configuration and the HTTP request.</param>
+        /// <returns>A <see cref="BundleResponse"/> object containing the processed bundle contents.</returns>
+        public override BundleResponse GenerateBundleResponse(BundleContext context)
+        {
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
+            IEnumerable<BundleFile> fileInfos = this.EnumerateFiles(context);
+            fileInfos = context.BundleCollection.IgnoreList.FilterIgnoredFiles(context, fileInfos);
+            fileInfos = this.Orderer.OrderFiles(context, fileInfos);
+            string bundleContent = this.Builder.BuildBundleContent(this, context, fileInfos);
+            BundleResponse bundleResponse = new BundleResponse(bundleContent, fileInfos);
+            return ApplyTransforms(context, bundleContent, fileInfos);
+        }
 
         public override BundleResponse CacheLookup(BundleContext context)
         {
@@ -38,29 +56,17 @@ namespace Byaltek.Azure
             }
             else
             {
-                var CdnPath = context.HttpContext.Request.IsSecureConnection ? _config.SecureCdnPath : _config.CdnPath;
-                var blob = string.Empty;
-                var content = bundleResponse.Content;
                 var contentType = bundleResponse.ContentType == "text/css" ? "text/css" : "text/javascript";
                 var file = VirtualPathUtility.GetFileName(context.BundleVirtualPath);
                 var folder = VirtualPathUtility.GetDirectory(context.BundleVirtualPath).TrimStart('~', '/').TrimEnd('/');
                 var ext = contentType == "text/css" ? ".css" : ".js";
-                var azurePath = string.Format("{0}/{1}{2}", folder, file, ext).ToLower();
                 var azureCompressedPath = string.Format("{0}/{1}/{2}{3}", folder, "compressed", file, ext).ToLower();
                 var AcceptEncoding = context.HttpContext.Request.Headers["Accept-Encoding"].ToLowerInvariant();
                 if (!string.IsNullOrEmpty(AcceptEncoding) && AcceptEncoding.Contains("gzip") && _config.UseCompression.Value)
                 {
-                    azurePath = azureCompressedPath;
-                    content = content.CompressString();
-                    bundleResponse.Content = content;
+                    if (!_config.BlobStorage.BlobExists(_config.Container, azureCompressedPath))
+                        _config.BlobStorage.CompressBlob(_config.Container, azureCompressedPath, bundleResponse.Content, contentType, _config.BundleCacheTTL);
                 }
-                var uri = string.Format("{0}{1}/{2}", CdnPath, _config.Container, azurePath);
-                if (context.BundleCollection.UseCdn)
-                    using (var hashAlgorithm = new SHA256Managed())
-                    {
-                        var hash = HttpServerUtility.UrlTokenEncode(hashAlgorithm.ComputeHash(Encoding.Unicode.GetBytes(content)));
-                        this.CdnPath = string.Format("{0}?v={1}", uri, hash);
-                    }
             }
             return bundleResponse;
         }
