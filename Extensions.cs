@@ -1,11 +1,12 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text;
 using System.IO.Compression;
+using System.Threading.Tasks;
 
 namespace Byaltek.Azure
 {
-    public static class Extensions
+    public static class StringExtensions
     {
 
         /// <summary>
@@ -18,26 +19,42 @@ namespace Byaltek.Azure
             content = string.Empty;
             if (bytes.Length > 350)
             {
-                MemoryStream mso = null;
                 using (var msi = new MemoryStream(bytes))
-                    try
+                using (var mso = new MemoryStream())
+                {
+                    using (var gzip = new GZipStream(mso, CompressionMode.Compress, true))
                     {
-                        mso = new MemoryStream();
-                        using (var gs = new GZipStream(mso, CompressionMode.Compress, true))
-                        {
-                            msi.CopyTo(gs);
-                        }
-                        mso.Position = 0;
-                        StreamReader sr = new StreamReader(mso);
-                        content = sr.ReadToEnd();
+                        msi.CopyTo(gzip);
                     }
-                    finally
-                    {
-                        if (mso != null)
-                            mso.Dispose();
-                    }
+                    mso.Position = 0;
+                    StreamReader sr = new StreamReader(mso);
+                    content = sr.ReadToEnd();
+                }
             }
             return content;
         }
+        
+        public static async Task<string> CompressStringAsync(this string content)
+        {
+            var bytes = Encoding.UTF8.GetBytes(content);
+            content = string.Empty;
+            if (bytes.Length > 350)
+            {
+                using (var msi = new MemoryStream(bytes))
+                using (var mso = new MemoryStream())
+                {
+                    using (var gzip = new GZipStream(mso, CompressionMode.Compress, true))
+                    {
+                        await msi.CopyToAsync(gzip);
+                    }
+                    // After writing to the MemoryStream, the position will be the size
+                    // of the decompressed file, we should reset it back to zero before returning.
+                    mso.Position = 0;
+                    StreamReader sr = new StreamReader(mso);
+                    content = sr.ReadToEnd();
+                }
+            }
+            return content;
+        }        
     }
 }
