@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text;
 using System.Security.Cryptography;
 using System.Web;
@@ -21,12 +21,12 @@ namespace Byaltek.Azure
             _config = config;
         }
 
-        public void Process(BundleContext context, BundleResponse response)
+        public void Process(BundleContext context, BundleResponse bundleResponse)
         {
             var CdnPath = context.HttpContext.Request.IsSecureConnection ? _config.SecureCdnPath : _config.CdnPath;
             var blob = string.Empty;
-            var content = response.Content;
-            var contentType = response.ContentType == "text/css" ? "text/css" : "text/javascript";
+            var content = bundleResponse.Content;
+            var contentType = bundleResponse.ContentType == "text/css" ? "text/css" : "text/javascript";
             var file = VirtualPathUtility.GetFileName(context.BundleVirtualPath);
             var folder = VirtualPathUtility.GetDirectory(context.BundleVirtualPath).TrimStart('~', '/').TrimEnd('/');
             var ext = contentType == "text/css" ? ".css" : ".js";
@@ -36,8 +36,8 @@ namespace Byaltek.Azure
                 blob = _config.BlobStorage.DownloadStringBlob(_config.Container, azurePath);
             if (blob != content)
             {
-                _config.BlobStorage.UploadStringBlob(_config.Container, azurePath, response.Content, contentType, _config.BundleCacheTTL);
-                _config.BlobStorage.CompressBlob(_config.Container, azureCompressedPath, response.Content, contentType, _config.BundleCacheTTL);
+                _config.BlobStorage.UploadStringBlob(_config.Container, azurePath, bundleResponse.Content, contentType, _config.BundleCacheTTL);
+                _config.BlobStorage.CompressBlob(_config.Container, azureCompressedPath, bundleResponse.Content, contentType, _config.BundleCacheTTL);
             }
             var AcceptEncoding = context.HttpContext.Request.Headers["Accept-Encoding"].ToLowerInvariant();
             if (!string.IsNullOrEmpty(AcceptEncoding) && AcceptEncoding.Contains("gzip") && _config.UseCompression.Value)
@@ -48,7 +48,7 @@ namespace Byaltek.Azure
                 content = content.CompressString();
                 if (blob != content)
                 {
-                    _config.BlobStorage.CompressBlob(_config.Container, azureCompressedPath, response.Content, contentType, _config.BundleCacheTTL);
+                    _config.BlobStorage.CompressBlob(_config.Container, azureCompressedPath, bundleResponse.Content, contentType, _config.BundleCacheTTL);
                 }
             }
             var uri = string.Format("{0}{1}/{2}", CdnPath, _config.Container, azurePath);
