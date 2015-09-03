@@ -85,9 +85,7 @@ namespace Byaltek.Azure
                 CloudBlobClient blobClient = StorageAccount.CreateCloudBlobClient();
                 CloudBlobContainer blobContainer = blobClient.GetContainerReference(container);
                 CloudBlockBlob blockBlob = blobContainer.GetBlockBlobReference(fileName);
-                if (blockBlob.Exists())
-                    return true;
-                return false;
+                return blockBlob.Exists();
             }
             catch (StorageException ex)
             {
@@ -140,10 +138,7 @@ namespace Byaltek.Azure
                 //get the cloud blob reference
                 var blobContainer = blobClient.GetContainerReference(container);
                 var cloudBlob = blobContainer.GetBlockBlobReference(fileName);
-                var cloudBlobExists = await cloudBlob.ExistsAsync();
-                if (!cloudBlobExists)
-                    return true;
-                return false;
+                return await cloudBlob.ExistsAsync();
             }
             catch (StorageException ex)
             {
