@@ -31,24 +31,22 @@ namespace Byaltek.Azure
             var folder = VirtualPathUtility.GetDirectory(context.BundleVirtualPath).TrimStart('~', '/').TrimEnd('/');
             var ext = contentType == "text/css" ? ".css" : ".js";
             var azurePath = string.Format("{0}/{1}{2}", folder, file, ext).ToLower();
-            var azureCompressedPath = string.Format("{0}/{1}/{2}{3}", folder, "compressed", file, ext).ToLower();
             if (_config.BlobStorage.BlobExists(_config.Container, azurePath))
                 blob = _config.BlobStorage.DownloadStringBlob(_config.Container, azurePath);
             if (blob != content)
             {
                 _config.BlobStorage.UploadStringBlob(_config.Container, azurePath, bundleResponse.Content, contentType, _config.BundleCacheTTL);
-                _config.BlobStorage.CompressBlob(_config.Container, azureCompressedPath, bundleResponse.Content, contentType, _config.BundleCacheTTL);
             }
             var AcceptEncoding = context.HttpContext.Request.Headers["Accept-Encoding"].ToLowerInvariant();
             if (!string.IsNullOrEmpty(AcceptEncoding) && AcceptEncoding.Contains("gzip") && _config.UseCompression.Value)
             {
-                azurePath = azureCompressedPath;
+                azurePath = string.Format("{0}/{1}/{2}{3}", folder, "compressed", file, ext).ToLower();
                 if (_config.BlobStorage.BlobExists(_config.Container, azurePath))
                     blob = _config.BlobStorage.DownloadStringBlob(_config.Container, azurePath);
                 content = content.CompressString();
                 if (blob != content)
                 {
-                    _config.BlobStorage.CompressBlob(_config.Container, azureCompressedPath, bundleResponse.Content, contentType, _config.BundleCacheTTL);
+                    _config.BlobStorage.CompressBlob(_config.Container, azurePath, bundleResponse.Content, contentType, _config.BundleCacheTTL);
                 }
             }
             var uri = string.Format("{0}{1}/{2}", CdnPath, _config.Container, azurePath);
