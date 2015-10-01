@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Web.Hosting;
 using Newtonsoft.Json.Linq;
@@ -29,6 +29,7 @@ namespace Byaltek.Azure
                 LoadConfig();
                 return _azureAccountName;
             }
+            set { _azureAccountName = value; }
         }
         /// <summary>
         /// Access key for the Azure Storage account where the files will be read from, and the bundles will be published to.
@@ -40,6 +41,7 @@ namespace Byaltek.Azure
                 LoadConfig();
                 return _azureAccessKey;
             }
+            set { _azureAccessKey = value; }
         }
         /// <summary>
         /// If you use a custom domain for your Azure CDN, supply that here. If you will not be using a custom domain, supply the 
@@ -56,6 +58,7 @@ namespace Byaltek.Azure
                 LoadConfig();
                 return _cdnPath;
             }
+            set { _cdnPath = value; }
         }
         /// <summary>
         /// Azure does not yet allow https to be used with custom domains on the CDN, so supply the default CDN path here for use in 
@@ -71,6 +74,7 @@ namespace Byaltek.Azure
                 LoadConfig();
                 return _secureCdnPath;
             }
+            set { _secureCdnPath = value; }
         }
         /// <summary>
         /// The value in seconds for how often you want the source files in the Azure storage account to be checked for changes. By default,
@@ -83,6 +87,7 @@ namespace Byaltek.Azure
                 LoadConfig();
                 return _cachePollTime;
             }
+            set { _cachePollTime = value; }
         }
         /// <summary>
         /// The value that will be set in the cache control header for the bundle. This will control how often the CDN checks for a new version
@@ -95,6 +100,7 @@ namespace Byaltek.Azure
                 LoadConfig();
                 return _bundleCacheTTL;
             }
+            set { _bundleCacheTTL = value; }
         }
 
         /// <summary>
@@ -107,6 +113,7 @@ namespace Byaltek.Azure
                 LoadConfig();
                 return _useCompression;
             }
+            set { _useCompression = value; }
         }
 
         /// <summary>
@@ -132,7 +139,7 @@ namespace Byaltek.Azure
         {
             try
             {
-                if (_azureAccountName == null || _azureAccessKey == null || _secureCdnPath == null || _cdnPath == null || _cachePollTime == 0 || _bundleCacheTTL == 0 || _useCompression == false)
+                if (string.IsNullOrEmpty(_azureAccountName))
                 {
                     if (WebConfigurationManager.AppSettings["AzureAccountName"] != null)
                     {
@@ -142,6 +149,9 @@ namespace Byaltek.Azure
                     {
                         _azureAccountName = GetJson(jsonString, "AzureAccountName");
                     }
+                }
+                if (string.IsNullOrEmpty(_azureAccessKey))
+                {
                     if (WebConfigurationManager.AppSettings["AzureAccessKey"] != null)
                     {
 
@@ -151,6 +161,9 @@ namespace Byaltek.Azure
                     {
                         _azureAccessKey = GetJson(jsonString, "AzureAccessKey");
                     }
+                }
+                if (string.IsNullOrEmpty(_secureCdnPath))
+                {
                     if (WebConfigurationManager.AppSettings["SecureCdnPath"] != null)
                     {
                         _secureCdnPath = WebConfigurationManager.AppSettings["SecureCdnPath"].ToString();
@@ -159,6 +172,9 @@ namespace Byaltek.Azure
                     {
                         _secureCdnPath = GetJson(jsonString, "SecureCdnPath");
                     }
+                }
+                if (string.IsNullOrEmpty(_cdnPath))
+                {
                     if (WebConfigurationManager.AppSettings["CdnPath"] != null)
                     {
                         _cdnPath = WebConfigurationManager.AppSettings["CdnPath"].ToString();
@@ -167,6 +183,9 @@ namespace Byaltek.Azure
                     {
                         _cdnPath = GetJson(jsonString, "CdnPath");
                     }
+                }
+                if (_cachePollTime == 0)
+                {
                     if (WebConfigurationManager.AppSettings["CachePollTime"] != null)
                     {
                         int oldCachePollTime = _cachePollTime;
@@ -183,6 +202,9 @@ namespace Byaltek.Azure
                             _cachePollTime = oldCachePollTime;
                         }
                     }
+                }
+                if (_bundleCacheTTL == 0)
+                {
                     if (WebConfigurationManager.AppSettings["BundleCacheTTL"] != null)
                     {
                         int oldBundleCacheTTL = _bundleCacheTTL;
@@ -199,6 +221,9 @@ namespace Byaltek.Azure
                             _bundleCacheTTL = oldBundleCacheTTL;
                         }
                     }
+                }
+                if (_useCompression == false)
+                {
                     if (WebConfigurationManager.AppSettings["UseCompression"] != null)
                     {
                         bool oldUseCompression = _useCompression;
@@ -228,10 +253,10 @@ namespace Byaltek.Azure
         {
             get
             {
-                if (WebConfigurationManager.AppSettings["JsonConfig"] != null)
+                if (WebConfigurationManager.AppSettings["jsonConfig"] != null)
                 {
 
-                    if (File.Exists(HostingEnvironment.MapPath(WebConfigurationManager.AppSettings["JsonConfig"].ToString())))
+                    if (File.Exists(HostingEnvironment.MapPath(WebConfigurationManager.AppSettings["jsonConfig"].ToString())))
                         using (StreamReader r = new StreamReader(HostingEnvironment.MapPath(WebConfigurationManager.AppSettings["jsonConfig"].ToString())))
                         {
                             return r.ReadToEnd();
