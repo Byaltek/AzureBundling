@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Collections;
 using System.Web;
@@ -13,24 +13,52 @@ namespace Byaltek.Azure
     {
         private Storage blobStore;
         private string container;
-        int pollTime = 60;
+        int pollTime = 300;
 
-        public StorageVirtualPath(string Container, string azureAccountName = null, string azureAccessKey = null, int? PollTime = null)
+        /// <summary>
+        /// The Azure Account name to be used for the connection to Azure
+        /// </summary>
+        public string AzureAccountName { get; set; }
+
+        /// <summary>
+        /// The AccessKey to be used for the connection to Azure
+        /// </summary>
+        public string AzureAccessKey { get; set; }
+
+        public StorageVirtualPath(string Container)
             : base()
         {
             container = Container;
-            if(!string.IsNullOrEmpty(azureAccountName) && !string.IsNullOrEmpty(azureAccessKey))
+            AzureAccountName = Config.AzureAccountName;
+            AzureAccessKey = Config.AzureAccessKey;
+            if (!string.IsNullOrEmpty(AzureAccountName) && !string.IsNullOrEmpty(AzureAccessKey))
             {
-                blobStore = new Storage(azureAccountName, azureAccessKey);               
+                blobStore = new Storage(AzureAccountName, AzureAccessKey);
             }
             else
             {
-                blobStore = new Storage();
+                throw new ArgumentNullException("AzureAccountName and AzureAccessKey are required!");
             }
+        }
+        
+        public StorageVirtualPath(string Container, string azureAccountName, string azureAccessKey, int? PollTime = null)
+            : base()
+        {
+            container = Container;
+            this.AzureAccountName = azureAccountName;
+            this.AzureAccessKey = azureAccessKey;
             if (PollTime.HasValue)
                 pollTime = PollTime.Value;
+            if (!string.IsNullOrEmpty(AzureAccountName) && !string.IsNullOrEmpty(AzureAccessKey))
+            {
+                blobStore = new Storage(AzureAccountName, AzureAccessKey);
+            }
+            else
+            {
+                throw new ArgumentNullException("AzureAccountName and AzureAccessKey are required!");
+            }
         }
-
+        
         /// <summary> 
         ///   Determines whether a specified virtual path is within 
         ///   the virtual file system. 
