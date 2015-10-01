@@ -60,12 +60,15 @@ namespace Byaltek.Azure
                 var file = VirtualPathUtility.GetFileName(context.BundleVirtualPath);
                 var folder = VirtualPathUtility.GetDirectory(context.BundleVirtualPath).TrimStart('~', '/').TrimEnd('/');
                 var ext = contentType == "text/css" ? ".css" : ".js";
-                var azureCompressedPath = string.Format("{0}/{1}/{2}{3}", folder, "compressed", file, ext).ToLower();
+                var azurePath = string.Format("{0}/{1}{2}", folder, file, ext).ToLower();
+                if (!_config.BlobStorage.BlobExists(_config.Container, azurePath))
+                    _config.BlobStorage.UploadStringBlob(_config.Container, azurePath, bundleResponse.Content, contentType, _config.BundleCacheTTL);
                 var AcceptEncoding = context.HttpContext.Request.Headers["Accept-Encoding"].ToLowerInvariant();
                 if (!string.IsNullOrEmpty(AcceptEncoding) && AcceptEncoding.Contains("gzip") && _config.UseCompression.Value)
                 {
-                    if (!_config.BlobStorage.BlobExists(_config.Container, azureCompressedPath))
-                        _config.BlobStorage.CompressBlob(_config.Container, azureCompressedPath, bundleResponse.Content, contentType, _config.BundleCacheTTL);
+                    azurePath = string.Format("{0}/{1}/{2}{3}", folder, "compressed", file, ext).ToLower();
+                    if (!_config.BlobStorage.BlobExists(_config.Container, azurePath))
+                        _config.BlobStorage.CompressBlob(_config.Container, azurePath, bundleResponse.Content, contentType, _config.BundleCacheTTL);
                 }
             }
             return bundleResponse;
