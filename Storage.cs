@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.IO.Compression;
 using System.Threading.Tasks;
@@ -188,7 +188,8 @@ namespace Byaltek.Azure
                 blockBlob.UploadFromStream(fileContents, null, blobRequestOptions);
                 blockBlob.Properties.ContentType = !string.IsNullOrEmpty(contentType) ? contentType : this.ContentType(remoteFileName);
                 blockBlob.Properties.CacheControl = string.Format("public, max-age={0}", cacheControlTTL);
-                blockBlob.Properties.ContentEncoding = "gzip";
+                if (doCompression.HasValue && doCompression == true)
+                    blockBlob.Properties.ContentEncoding = "gzip";
                 blockBlob.SetProperties();
                 if (doCompression.HasValue && doCompression == true)
                     CompressBlob(container, remoteFileName, DownloadStringBlob(container, remoteFileName), contentType, cacheControlTTL);
@@ -241,7 +242,8 @@ namespace Byaltek.Azure
                 await blockBlob.UploadFromStreamAsync(fileContents, null, blobRequestOptions, new OperationContext());
                 blockBlob.Properties.ContentType = !string.IsNullOrEmpty(contentType) ? contentType : this.ContentType(remoteFileName);
                 blockBlob.Properties.CacheControl = string.Format("public, max-age={0}", cacheControlTTL);
-                blockBlob.Properties.ContentEncoding = "gzip";
+                if (doCompression.HasValue && doCompression == true)
+                    blockBlob.Properties.ContentEncoding = "gzip";
                 blockBlob.SetProperties();
                 if (doCompression.HasValue && doCompression == true)
                     CompressBlob(container, remoteFileName, DownloadStringBlob(container, remoteFileName), contentType, cacheControlTTL);
@@ -278,7 +280,8 @@ namespace Byaltek.Azure
                 blockBlob.UploadText(fileContents, null, null, blobRequestOptions);
                 blockBlob.Properties.ContentType = contentType;
                 blockBlob.Properties.CacheControl = string.Format("public, max-age={0}", cacheControlTTL);
-                blockBlob.Properties.ContentEncoding = "gzip";
+                if (doCompression.HasValue && doCompression == true)
+                    blockBlob.Properties.ContentEncoding = "gzip";
                 blockBlob.SetProperties();
                 if (doCompression.HasValue && doCompression == true)
                     CompressBlob(container, remoteFileName, fileContents, contentType, cacheControlTTL);
@@ -314,7 +317,8 @@ namespace Byaltek.Azure
                 await blockBlob.UploadTextAsync(fileContents, null, null, blobRequestOptions, new OperationContext());
                 blockBlob.Properties.ContentType = contentType;
                 blockBlob.Properties.CacheControl = string.Format("public, max-age={0}", cacheControlTTL);
-                blockBlob.Properties.ContentEncoding = "gzip";
+                if (doCompression.HasValue && doCompression == true)
+                    blockBlob.Properties.ContentEncoding = "gzip";
                 blockBlob.SetProperties();
                 if (doCompression.HasValue && doCompression == true)
                     CompressBlob(container, remoteFileName, fileContents, contentType, cacheControlTTL);
