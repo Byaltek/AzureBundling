@@ -1,4 +1,4 @@
-﻿namespace Byaltek.Azure
+namespace Byaltek.Azure
 {
     public class GZipBundleConfig
     {
@@ -124,7 +124,7 @@
             VirtualPath = virtualPath;
             CdnPath = cdnPath;
             SecureCdnPath = secureCdnPath;
-            UseCompression = useCompression;
+            UseCompression = useCompression.HasValue ? useCompression.Value : UseCompression;
             LoadConfig(this);
         }
 
@@ -143,7 +143,7 @@
             VirtualPath = virtualPath;
             BundleCacheTTL = bundleCacheTTL;
             CachePollTime = cachePollTime;
-            UseCompression = useCompression;
+            UseCompression = useCompression.HasValue ? useCompression.Value : UseCompression;
             LoadConfig(this);
         }
 
@@ -175,7 +175,7 @@
             SecureCdnPath = secureCdnPath;
             BundleCacheTTL = bundleCacheTTL;
             CachePollTime = cachePollTime;
-            UseCompression = useCompression;
+            UseCompression = useCompression.HasValue ? useCompression.Value : UseCompression;
             LoadConfig(this);
         }
 
@@ -209,7 +209,7 @@
             CdnPath = cdnPath;
             SecureCdnPath = secureCdnPath;
             BundleCacheTTL = bundleCacheTTL;
-            UseCompression = useCompression;
+            UseCompression = useCompression.HasValue ? useCompression.Value : UseCompression;
             LoadConfig(this);
         }
 
@@ -245,7 +245,7 @@
             SecureCdnPath = secureCdnPath;
             BundleCacheTTL = bundleCacheTTL;
             CachePollTime = cachePollTime;
-            UseCompression = useCompression;
+            UseCompression = useCompression.HasValue ? useCompression.Value : UseCompression;
             LoadConfig(this);
         }
 
