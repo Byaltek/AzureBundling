@@ -80,11 +80,11 @@ namespace Byaltek.Azure
         /// <param name="context"></param>
         public override string GetCacheKey(BundleContext context)
         {
-            if (context.HttpContext == null)
+            if (context == null)
             {
-                return base.GetCacheKey(context);
+                throw new ArgumentNullException("context");
             }
-            return string.Format("System.Web.Optimization.Bundle:{0}{1}", context.BundleVirtualPath, context.HttpContext.Request.IsSecureConnection == true ? "ssl" : "");
+            return string.Format("Byaltek.Azure.GzipBundle:{0}", context.BundleVirtualPath);
         }
     }
 
