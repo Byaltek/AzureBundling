@@ -45,7 +45,17 @@ namespace Byaltek.Azure
 
         public override BundleResponse CacheLookup(BundleContext context)
         {
-            BundleResponse bundleResponse = base.CacheLookup(context);
+            BundleResponse bundleResponse = null;
+            try
+            {
+                // Attempt at supressing a NullReferenceException which seems to come from within base.CacheLookup 
+                bundleResponse = base.CacheLookup(context);
+            }
+            catch (NullReferenceException)
+            {
+                bundleResponse = null;
+            }
+
             if (bundleResponse == null || context.EnableInstrumentation)
             {
                 bundleResponse = this.GenerateBundleResponse(context);
